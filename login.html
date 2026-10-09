@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h1 { color: #1a2a3a; text-align: center; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #1a2a3a; }
+        input { width: 100%; padding: 12px 16px; border: 1px solid #dce1e8; border-radius: 8px; font-size: 16px; transition: 0.3s; }
+        input:focus { border-color: #2d7aff; outline: none; box-shadow: 0 0 0 3px rgba(45,122,255,0.1); }
+        button { width: 100%; padding: 12px; background: #2d7aff; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #1a5cc4; transform: translateY(-2px); }
+        .hidden { display: none !important; }
+        .error-message { color: #dc3545; background: #f8d7da; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="login-section">
+    <h1>🔐 تسجيل الدخول</h1>
+    <div id="errorMessage" class="error-message hidden"></div>
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="email">البريد الإلكتروني</label>
+            <input type="email" id="email" placeholder="example@domain.com" required>
+        </div>
+        <div class="form-group">
+            <label for="password">كلمة المرور</label>
+            <input type="password" id="password" placeholder="كلمة المرور" required>
+        </div>
+        <button type="submit" id="loginBtn">دخول</button>
+    </form>
+</div>
+
+<!-- نافذة تغيير كلمة المرور (تظهر فقط للموظف الجديد) -->
+<div class="container hidden" id="change-password-section">
+    <h1>🔒 تغيير كلمة المرور</h1>
+    <div id="changeError" class="error-message hidden"></div>
+    <div class="form-group">
+        <label for="new-password">كلمة المرور الجديدة</label>
+        <input type="password" id="new-password" placeholder="6 خانات على الأقل">
+    </div>
+    <div class="form-group">
+        <label for="confirm-password">تأكيد كلمة المرور</label>
+        <input type="password" id="confirm-password" placeholder="أعد كتابة كلمة المرور">
+    </div>
+    <button onclick="updatePassword()">حفظ وتغيير كلمة المرور</button>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        const SUPABASE_URL = 'https://wacvbnebicbutyzpnkez.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhY3ZibmViaWNidXR5enBua2V6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxODYzMjEsImV4cCI6MjEwMTc2MjMyMX0.NEjwCs4ZBcoJT9ZVxNnYaZRY1-DIUjk-aNqV3rs5A4w';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const errorDiv = document.getElementById('errorMessage');
+        const loginBtn = document.getElementById('loginBtn');
+
+        const loginSection = document.getElementById('login-section');
+        const changePasswordSection = document.getElementById('change-password-section');
+
+        async function showError(element, msg) {
+            element.textContent = msg;
+            element.classList.remove('hidden');
+        }
+
+        async function hideError(element) {
+            element.classList.add('hidden');
+        }
+
+        // فحص الجلسة عند فتح الصفحة
+       // فحص الجلسة عند فتح الصفحة
+async function checkSession() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        // 🔴 التحقق من وجود المستخدم في جدول الموظفين
+        const { data: profile, error } = await supabase
+            .from('staff_profiles')
+            .select('id')
+            .eq('id', session.user.id)
+            .single();
+
+        // إذا كان المستخدم غير موجود في الجدول أو حدث خطأ، قم بتسجيل الخروج وإظهار شاشة الدخول
+        if (error || !profile) {
+            await supabase.auth.signOut();
+            loginSection.classList.remove('hidden');
+            changePasswordSection.classList.add('hidden');
+            showError(errorDiv, 'هذا الحساب لم يعد متاحاً. يرجى التواصل مع الإدارة أو تسجيل الدخول بحساب آخر.');
+            return;
+        }
+
+        // إذا كان المستخدم موجوداً، توجيهه حسب دوره
+        handleRedirect(session.user);
+    } else {
+        // لا توجد جلسة، اعرض شاشة الدخول
+        loginSection.classList.remove('hidden');
+    }
+}
+        async function handleRedirect(user) {
+            const { data: profile, error: profileError } = await supabase
+                .from('staff_profiles')
+                .select('role, must_change_password')
+                .eq('id', user.id)
+                .single();
+
+            if (profileError) {
+                console.error("خطأ في جلب بيانات الموظف:", profileError);
+                window.location.href = 'dashboard-admin.html';
+                return;
+            }
+
+            if (profile.must_change_password === true) {
+                loginSection.classList.add('hidden');
+                changePasswordSection.classList.remove('hidden');
+            } else {
+               if (profile.role === 'manager') {
+    window.location.href = 'dashboard-admin.html';
+} else if (profile.role === 'secretary') {
+    window.location.href = 'dashboard-admin.html';
+} else {
+    window.location.href = 'dashboard-admin.html'; // ✅ الموظف يدخل مباشرة إلى الكاش بورد
+}
+            }
+        }
+
+        loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            hideError(errorDiv);
+            
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                showError(errorDiv, 'يرجى ملء جميع الحقول');
+                return;
+            }
+
+            loginBtn.textContent = '...';
+            loginBtn.disabled = true;
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    showError(errorDiv, 'فشل تسجيل الدخول: ' + error.message);
+                    loginBtn.textContent = 'دخول';
+                    loginBtn.disabled = false;
+                    return;
+                }
+
+                if (data.session) {
+                    handleRedirect(data.session.user);
+                } else {
+                    showError(errorDiv, 'حدث خطأ غير متوقع');
+                    loginBtn.textContent = 'دخول';
+                    loginBtn.disabled = false;
+                }
+
+            } catch (err) {
+                showError(errorDiv, 'خطأ في الاتصال: ' + err.message);
+                loginBtn.textContent = 'دخول';
+                loginBtn.disabled = false;
+            }
+        });
+
+        window.updatePassword = async function() {
+            const newPass = document.getElementById('new-password').value;
+            const confirmPass = document.getElementById('confirm-password').value;
+            const changeError = document.getElementById('changeError');
+            
+            try {
+                const { error } = await supabase.auth.updateUser({ password: newPass });
+                if (error) { showError(changeError, 'فشل تغيير كلمة المرور: ' + error.message); return; }
+
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await supabase
+                        .from('staff_profiles')
+                        .update({ must_change_password: false })
+                        .eq('id', user.id);
+                }
+
+                alert('تم تغيير كلمة المرور بنجاح!');
+                window.location.reload();
+            } catch (err) {
+                showError(changeError, 'خطأ في الاتصال: ' + err.message);
+            }
+        };
+
+        checkSession();
+    })();
+</script>
+</body>
+</html>
