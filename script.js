@@ -3,8 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================
     // إعدادات Supabase (داخل الدالة لضمان تحميل المكتبة أولاً)
     // =========================================================
-    const SUPABASE_URL = 'https://wacvbnebicbutyzpnkez.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhY3ZibmViaWNidXR5enBua2V6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxODYzMjEsImV4cCI6MjEwMTc2MjMyMX0.NEjwCs4ZBcoJT9ZVxNnYaZRY1-DIUjk-aNqV3rs5A4w';
+   const SUPABASE_URL = 'https://yazykdnmmljoirnkeoyy.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhenlrZG5tbWxqb2lybmtlb3l5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0OTYxMzAsImV4cCI6MjEwNzA3MjEzMH0.3EPhGRr_oxMAWtqLP2dS6tBIgJbpkMOsSSSQeI3FqVs';
     const SUPABASE_TABLE = 'consultation_requests';
     const BUCKET_NAME = 'consultation-files'; // 🔴 اسم الحاوية للمرفقات
 
